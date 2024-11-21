@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 
 import { Settings } from '@src/components/features/settings';
 import { Layout } from '@src/components/templates/layout/layout';
-import { useContentfulContext, ContentfulContentProvider } from '@src/contentful-context';
+import { ContentfulContentProvider } from '@src/contentful-context';
 import { queryConfig } from '@src/lib/gql-client';
 import colorfulTheme from '@src/theme';
 import contentfulConfig from 'contentful.config';
@@ -19,9 +19,7 @@ import { Navigation } from '@src/components/molecules/navigation';
 import { Footer } from '@src/components/molecules/footer';
 import { Box } from '@mui/material';
 
-const LivePreviewProvider = ({ children }) => {
-  const { previewActive, locale } = useContentfulContext();
-
+const LivePreviewProvider = ({ children, previewActive, locale }) => {
   return (
     <ContentfulLivePreviewProvider
       locale={locale}
@@ -42,7 +40,6 @@ const CustomApp = ({
 }: AppProps<CustomPageProps>) => {
   const [queryClient] = useState(() => new QueryClient(queryConfig));
   const { dehydratedState, err, ...pageProps } = originalPageProps;
-  const { previewActive } = useContentfulContext();
 
   useEffect(() => {
     // when component is mounting we remove server side rendered css:
@@ -51,59 +48,39 @@ const CustomApp = ({
     if (jssStyles && jssStyles.parentNode) {
       jssStyles.parentNode.removeChild(jssStyles);
     }
+  }, []);
 
-    router.events.on('routeChangeComplete', () => null);
-
-    return () => {
-      router.events.off('routeChangeComplete', () => null);
-    };
-  }, [router.events]);
+  if (err) {
+    return <div>Error: {err.message}</div>;
+  }
 
   return (
-    <>
-      <Head>
-        <meta
-          name="viewport"
-          content="minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no"
-        />
-        <title key="title">{contentfulConfig.meta.title}</title>
-        <meta key="og:title" property="og:title" content={contentfulConfig.meta.title} />
-        <meta key="description" name="description" content={contentfulConfig.meta.description} />
-
-        <meta
-          key="og:description"
-          property="og:description"
-          content={contentfulConfig.meta.description}
-        />
-        <meta key="og:image" property="og:image" content={contentfulConfig.meta.image} />
-        <meta key="og:image:width" property="og:image:width" content="1200" />
-        <meta key="og:image:height" property="og:image:height" content="630" />
-        <meta key="og:type" property="og:type" content="website" />
-      </Head>
-
-      <ContentfulContentProvider router={router}>
-        <LivePreviewProvider>
-          <QueryClientProvider client={queryClient}>
-            <ReactQueryDevtools initialIsOpen={false} />
+    <ContentfulContentProvider router={router}>
+      {({ previewActive, locale }) => (
+        <QueryClientProvider client={queryClient}>
+          <Hydrate state={dehydratedState}>
             <StyledEngineProvider injectFirst>
               <ThemeProvider theme={colorfulTheme}>
-                <CssBaseline />
-                <Hydrate state={dehydratedState}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-                    <Navigation />
-                    <Layout preview={previewActive}>
-                      <Component {...pageProps} err={err} />
-                      <Settings />
-                    </Layout>
-                    <Footer />
-                  </Box>
-                </Hydrate>
+                <LivePreviewProvider previewActive={previewActive} locale={locale}>
+                  <CssBaseline />
+                  <Layout>
+                    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                      <Navigation />
+                      <Box component="main" sx={{ flex: 1 }}>
+                        <Component {...pageProps} />
+                      </Box>
+                      <Footer />
+                    </Box>
+                  </Layout>
+                  {contentfulConfig.contentful?.usePreviewApi && <Settings />}
+                  <ReactQueryDevtools />
+                </LivePreviewProvider>
               </ThemeProvider>
             </StyledEngineProvider>
-          </QueryClientProvider>
-        </LivePreviewProvider>
-      </ContentfulContentProvider>
-    </>
+          </Hydrate>
+        </QueryClientProvider>
+      )}
+    </ContentfulContentProvider>
   );
 };
 

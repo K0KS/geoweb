@@ -28,19 +28,19 @@ export const ContentfulContext = createContext<ContentfulContextInterface>(conte
 
 export const useContentfulContext = () => useContext(ContentfulContext);
 
-const ContentfulContentProvider = ({ children, router }) => {
-  const previewActive = !!router.query.preview;
+interface ContentfulContentProviderProps {
+  children: (context: ContentfulContextInterface) => React.ReactNode;
+  router: any;
+}
 
-  return (
-    <ContentfulContext.Provider
-      value={{
-        ...contentfulContextValue,
-        previewActive,
-      }}
-    >
-      {children}
-    </ContentfulContext.Provider>
-  );
+const ContentfulContentProvider: React.FC<ContentfulContentProviderProps> = ({ children, router }) => {
+  const previewActive = !!router.query.preview;
+  const contextValue = {
+    ...contentfulContextValue,
+    previewActive,
+  };
+
+  return children(contextValue);
 };
 
 export { ContentfulContentProvider };
